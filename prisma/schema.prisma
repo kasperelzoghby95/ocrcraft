@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String          @id @default(cuid())
+  email        String          @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  workflows    SavedWorkflow[]
+}
+
+model SavedWorkflow {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String
+  description  String?
+  workflowData String
+  isPublic     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isPublic])
+}
+
+model ToolAnalytics {
+  id             String   @id @default(cuid())
+  toolName       String   @unique
+  executionCount Int      @default(0)
+  lastUsedAt     DateTime @default(now())
+}
