@@ -1,79 +1,47 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import {
-  LayoutDashboard,
-  Workflow,
-  Plus,
-  Trash2,
-  ExternalLink,
-  LogOut,
-  Loader2,
-  FileText,
-} from 'lucide-react';
-import { motion } from 'framer-motion';
-
-interface WorkflowItem {
-  id: string;
-  title: string;
-  description?: string;
-  workflowData: string;
-  isPublic: boolean;
-  createdAt: string;
-}
-
-interface User {
-  id: string;
-  email: string;
-  name?: string | null;
-}
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { LayoutDashboard, LogOut, Loader2, ScanText, History, FileText } from "lucide-react";
+import { motion } from "framer-motion";
+import { signOut } from "next-auth/react";
+import type { ExtractionItem } from "@/types";
+import { HistoryPanel } from "@/components/history-panel";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
+  const [user, setUser] = useState<{ id: string; email: string; name?: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedHistory, setSelectedHistory] = useState<ExtractionItem | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchUser() {
       try {
-        const [userRes, workflowsRes] = await Promise.all([
-          fetch('/api/auth/me'),
-          fetch('/api/workflows'),
-        ]);
-
-        const userData = await userRes.json();
-        const workflowsData = await workflowsRes.json();
-
-        if (!userData.user) {
-          router.push('/login');
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        if (!data.user) {
+          router.push("/signin");
           return;
         }
-
-        setUser(userData.user);
-        setWorkflows(workflowsData.workflows || []);
+        setUser(data.user);
       } catch {
-        router.push('/login');
+        router.push("/signin");
       } finally {
         setLoading(false);
       }
     }
-    fetchData();
+    fetchUser();
   }, [router]);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/');
-    router.refresh();
+    await signOut({ callbackUrl: "/" });
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this workflow?')) return;
-    await fetch(`/api/workflows/${id}`, { method: 'DELETE' });
-    setWorkflows((prev) => prev.filter((w) => w.id !== id));
-  };
+  const handleSelectHistory = useCallback((item: ExtractionItem) => {
+    setSelectedHistory(item);
+  }, []);
 
   if (loading) {
     return (
@@ -84,7 +52,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12">
+    <div className="mx-auto max-w-6xl px-4 py-12">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -96,89 +64,60 @@ export default function DashboardPage() {
               Welcome back, {user?.name || user?.email}
             </p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold">Your Workflows</h2>
-          <Link
-            href="/workflow-editor"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            New Workflow
-          </Link>
-        </div>
-
-        {workflows.length === 0 ? (
-          <div className="rounded-2xl border-2 border-dashed border-border p-16 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">No workflows saved yet</p>
+          <div className="flex items-center gap-3">
             <Link
-              href="/workflow-editor"
+              href="/convert"
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
             >
-              <Plus className="h-4 w-4" />
-              Create Your First Workflow
+              <ScanText className="h-4 w-4" /> New Conversion
             </Link>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <LogOut className="h-4 w-4" /> Sign Out
+            </button>
           </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {workflows.map((workflow) => {
-              let stepCount = 0;
-              try {
-                const data = JSON.parse(workflow.workflowData);
-                stepCount = data.steps?.length || 0;
-              } catch {}
-              return (
-                <div
-                  key={workflow.id}
-                  className="rounded-xl border border-border bg-card p-5 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold">{workflow.title}</h3>
-                      {workflow.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{workflow.description}</p>
-                      )}
-                    </div>
-                    {workflow.isPublic && (
-                      <span className="rounded-full bg-green-500/10 text-green-600 text-xs px-2 py-0.5">
-                        Public
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {stepCount} step{stepCount !== 1 ? 's' : ''} &middot;{' '}
-                    {new Date(workflow.createdAt).toLocaleDateString()}
-                  </p>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-1">
+            <HistoryPanel onSelect={handleSelectHistory} refreshKey={refreshKey} />
+          </div>
+          <div className="lg:col-span-2">
+            {selectedHistory ? (
+              <div className="rounded-xl border border-border bg-card p-6">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <Link
-                      href={`/workflow-editor?load=${workflow.id}`}
-                      className="inline-flex items-center gap-1 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium hover:bg-muted/80 transition-colors"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Open
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(workflow.id)}
-                      className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Delete
-                    </button>
+                    <FileText className="h-5 w-5 text-blue-500" />
+                    <div>
+                      <h3 className="font-semibold">{selectedHistory.fileName}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(selectedHistory.createdAt).toLocaleString()} &middot; {selectedHistory.fileType}
+                      </p>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(selectedHistory.extractedText)}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+                  >
+                    Copy
+                  </button>
                 </div>
-              );
-            })}
+                <textarea
+                  readOnly
+                  value={selectedHistory.extractedText}
+                  className="w-full min-h-[300px] rounded-xl border border-border bg-background p-4 text-sm font-mono resize-y"
+                />
+              </div>
+            ) : (
+              <div className="rounded-xl border-2 border-dashed border-border p-16 text-center">
+                <History className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-muted-foreground">Select a history item to view its content</p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </motion.div>
     </div>
   );

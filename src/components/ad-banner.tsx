@@ -1,39 +1,38 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
+import { useRef, useEffect } from "react";
 
-export default function AdBanner({ slot }: { slot?: string }) {
-  const adContainerRef = useRef<HTMLDivElement>(null);
+interface AdBannerProps {
+  slot: "top" | "inline" | "sidebar";
+}
+
+export default function AdBanner({ slot }: AdBannerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!adContainerRef.current) return;
+    if (!containerRef.current) return;
 
-    // Clear previous elements if any
-    adContainerRef.current.innerHTML = '';
+    const script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src = "//pl30458916.effectivecpmnetwork.com/8c/4c/7a/8c4c7ac62b5c5de7acfcb03c03e5b5be.js";
+    script.async = true;
 
-    const atOptionsScript = document.createElement('script');
-    atOptionsScript.type = 'text/javascript';
-    atOptionsScript.innerHTML = `
-      atOptions = {
-        'key' : '926c8530b037aace1b78689e5b0c2621',
-        'format' : 'iframe',
-        'height' : 90,
-        'width' : 728,
-        'params' : {}
-      };
-    `;
+    containerRef.current.appendChild(script);
 
-    const invokeScript = document.createElement('script');
-    invokeScript.type = 'text/javascript';
-    invokeScript.src = 'https://www.highperformanceformat.com/926c8530b037aace1b78689e5b0c2621/invoke.js';
-
-    adContainerRef.current.appendChild(atOptionsScript);
-    adContainerRef.current.appendChild(invokeScript);
+    return () => {
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
+      }
+    };
   }, []);
 
   return (
-    <div className="w-full flex justify-center items-center my-4 min-h-[90px]">
-      <div ref={adContainerRef} id="adsterra-banner-728x90" />
+    <div className="flex justify-center items-center min-h-[90px]">
+      <div
+        ref={containerRef}
+        className="ad-container"
+        style={{ width: "728px", maxWidth: "100%", height: "90px" }}
+      />
     </div>
   );
 }

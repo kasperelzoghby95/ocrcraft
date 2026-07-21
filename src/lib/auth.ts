@@ -1,32 +1,54 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import type { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { compare } from "bcryptjs";
+import { prisma } from "./db";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-do-not-use-in-production';
+export const authOptions: NextAuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
-}
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
-}
+        if (!user) return null;
 
-export function signToken(payload: { userId: string; email: string }): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
-}
+        const passwordValid = await compare(credentials.password, user.passwordHash);
+        if (!passwordValid) return null;
 
-export function verifyToken(token: string): { userId: string; email: string } | null {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
-  } catch {
-    return null;
-  }
-}
-
-export function getSessionFromCookies(cookieStore: { get?: (name: string) => { value?: string } | undefined } | undefined): { userId: string; email: string } | null {
-  if (!cookieStore?.get) return null;
-  const tokenObj = cookieStore.get('token');
-  const token = tokenObj?.value;
-  if (!token) return null;
-  return verifyToken(token);
-}
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        };
+      },
+    }),
+  ],
+  session: {
+    strategy: "jwt",
+  },
+  pages: {
+    signIn: "/signin",
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id;
+      }
+      return session;
+    },
+  },
+};

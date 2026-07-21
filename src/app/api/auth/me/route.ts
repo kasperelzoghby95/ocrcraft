@@ -1,17 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { getSessionFromCookies } from '@/lib/auth';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export async function GET(request: NextRequest) {
-  const session = getSessionFromCookies(request.cookies);
-  if (!session) {
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
     return NextResponse.json({ user: null });
   }
-
-  const user = await db.user.findUnique({
-    where: { id: session.userId },
-    select: { id: true, email: true, name: true, createdAt: true },
-  });
-
-  return NextResponse.json({ user });
+  return NextResponse.json({ user: session.user });
 }
