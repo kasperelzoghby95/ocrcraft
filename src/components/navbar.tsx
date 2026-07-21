@@ -15,8 +15,6 @@ import {
   Minimize2,
   RotateCw,
   Workflow,
-  LayoutDashboard,
-  LogIn,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -67,20 +65,6 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            Dashboard
-          </Link>
-          <Link
-            href="/login"
-            className="hidden sm:flex items-center gap-1.5 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
-          >
-            <LogIn className="h-4 w-4" />
-            Sign In
-          </Link>
           {mounted && (
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -114,22 +98,6 @@ export function Navbar() {
               </Link>
             );
           })}
-          <Link
-            href="/dashboard"
-            onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            Dashboard
-          </Link>
-          <Link
-            href="/login"
-            onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-2 rounded-lg bg-blue-500 px-3 py-3 text-sm font-medium text-white"
-          >
-            <LogIn className="h-4 w-4" />
-            Sign In
-          </Link>
         </div>
       )}
     </nav>
