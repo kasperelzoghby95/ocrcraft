@@ -5,7 +5,7 @@ import { FileUpload } from '@/components/file-upload';
 import { rotatePages, downloadBlob, getPdfPageCount } from '@/lib/pdf-engine';
 import { RotateCw, ArrowRight, Loader2, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AdBanner } from '@/components/ad-banner';
+import AdBanner from '@/components/ad-banner';
 
 interface RotationEntry {
   pageIndex: number;
@@ -58,7 +58,7 @@ export default function RotatePdfPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
-      <AdBanner slot="top" className="mb-8" />
+      <AdBanner slot="top" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center gap-3 mb-2">
           <div className="rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 p-3">

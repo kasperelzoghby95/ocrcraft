@@ -5,7 +5,7 @@ import { FileUpload } from '@/components/file-upload';
 import { mergePdfs, downloadBlob } from '@/lib/pdf-engine';
 import { Merge, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { AdBanner } from '@/components/ad-banner';
+import AdBanner from '@/components/ad-banner';
 
 export default function MergePdfPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -29,7 +29,7 @@ export default function MergePdfPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
-      <AdBanner slot="top" className="mb-8" />
+      <AdBanner slot="top" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center gap-3 mb-2">
           <div className="rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-3">
@@ -51,7 +51,7 @@ export default function MergePdfPage() {
         />
 
         {files.length >= 2 && (
-          <AdBanner slot="inline" className="mb-4" />
+          <AdBanner slot="inline" />
         )}
 
         {files.length >= 2 && (

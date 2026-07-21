@@ -10,7 +10,7 @@ import {
   Globe,
   ArrowRight,
 } from 'lucide-react';
-import { AdBanner } from '@/components/ad-banner';
+import AdBanner from '@/components/ad-banner';
 
 const tools = [
   {

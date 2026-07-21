@@ -1,67 +1,39 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import clsx from 'clsx';
+import { useEffect, useRef } from 'react';
 
-type AdSlot = 'top' | 'inline' | 'bottom';
-
-interface AdBannerProps {
-  slot: AdSlot;
-  className?: string;
-}
-
-const slotConfig = {
-  top: { height: 'min-h-[100px]' },
-  inline: { height: 'min-h-[80px]' },
-  bottom: { height: 'min-h-[110px]' },
-} as const;
-
-const BANNER_KEY = '926c8530b037aace1b78689e5b0c2621';
-
-export function AdBanner({ slot, className }: AdBannerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [loaded, setLoaded] = useState(false);
+export default function AdBanner({ slot }: { slot?: string }) {
+  const adContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current || loaded) return;
-    if (typeof window === 'undefined') return;
+    if (!adContainerRef.current) return;
 
-    const container = containerRef.current;
+    // Clear previous elements if any
+    adContainerRef.current.innerHTML = '';
 
-    // Set atOptions globally
-    (window as Record<string, unknown>).atOptions = {
-      key: BANNER_KEY,
-      format: 'iframe',
-      height: 90,
-      width: 728,
-      params: {},
-    };
+    const atOptionsScript = document.createElement('script');
+    atOptionsScript.type = 'text/javascript';
+    atOptionsScript.innerHTML = `
+      atOptions = {
+        'key' : '926c8530b037aace1b78689e5b0c2621',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : 728,
+        'params' : {}
+      };
+    `;
 
-    // Inject invoke.js
-    const script = document.createElement('script');
-    script.src = `https://www.highperformanceformat.com/${BANNER_KEY}/invoke.js`;
-    script.async = true;
-    script.onload = () => setLoaded(true);
+    const invokeScript = document.createElement('script');
+    invokeScript.type = 'text/javascript';
+    invokeScript.src = 'https://www.highperformanceformat.com/926c8530b037aace1b78689e5b0c2621/invoke.js';
 
-    container.appendChild(script);
-
-    return () => {
-      if (container.contains(script)) {
-        container.removeChild(script);
-      }
-    };
-  }, [loaded]);
+    adContainerRef.current.appendChild(atOptionsScript);
+    adContainerRef.current.appendChild(invokeScript);
+  }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className={clsx(
-        'w-full flex items-center justify-center overflow-hidden',
-        slotConfig[slot].height,
-        className
-      )}
-      role="complementary"
-      aria-label="Advertisement"
-    />
+    <div className="w-full flex justify-center items-center my-4 min-h-[90px]">
+      <div ref={adContainerRef} id="adsterra-banner-728x90" />
+    </div>
   );
 }
