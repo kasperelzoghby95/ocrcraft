@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Navbar } from "@/components/navbar";
@@ -43,6 +44,18 @@ export default function RootLayout({
             <p>&copy; {new Date().getFullYear()} PDFCraft. All processing happens in your browser.</p>
           </footer>
         </ThemeProvider>
+
+        {/* Adsterra Popunder */}
+        <Script
+          src="https://pl30458916.effectivecpmnetwork.com/8c/4c/7a/8c4c7ac62b5c5de7acfcb03c03e5b5be.js"
+          strategy="afterInteractive"
+        />
+
+        {/* Adsterra Social Bar */}
+        <Script
+          src="https://pl30458917.effectivecpmnetwork.com/4c/22/85/4c228521585c23f34ae4eb829f1e7193.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );

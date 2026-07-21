@@ -1,7 +1,6 @@
 'use client';
 
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 
 type AdSlot = 'top' | 'inline' | 'bottom';
@@ -12,69 +11,57 @@ interface AdBannerProps {
 }
 
 const slotConfig = {
-  top: {
-    height: 'h-24',
-    label: 'Top Banner Ad — 728×90',
-    responsive: true,
-  },
-  inline: {
-    height: 'h-20',
-    label: 'Inline Ad — High Visibility',
-    responsive: false,
-  },
-  bottom: {
-    height: 'h-28',
-    label: 'Bottom Banner Ad — 970×250',
-    responsive: true,
-  },
+  top: { height: 'min-h-[100px]' },
+  inline: { height: 'min-h-[80px]' },
+  bottom: { height: 'min-h-[110px]' },
 } as const;
 
+const BANNER_KEY = '926c8530b037aace1b78689e5b0c2621';
+
 export function AdBanner({ slot, className }: AdBannerProps) {
-  const { theme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!containerRef.current || loaded) return;
+    if (typeof window === 'undefined') return;
 
-  if (!mounted) return null;
+    const container = containerRef.current;
 
-  const config = slotConfig[slot];
-  const isDark = theme === 'dark';
+    // Set atOptions globally
+    (window as Record<string, unknown>).atOptions = {
+      key: BANNER_KEY,
+      format: 'iframe',
+      height: 90,
+      width: 728,
+      params: {},
+    };
+
+    // Inject invoke.js
+    const script = document.createElement('script');
+    script.src = `https://www.highperformanceformat.com/${BANNER_KEY}/invoke.js`;
+    script.async = true;
+    script.onload = () => setLoaded(true);
+
+    container.appendChild(script);
+
+    return () => {
+      if (container.contains(script)) {
+        container.removeChild(script);
+      }
+    };
+  }, [loaded]);
 
   return (
     <div
+      ref={containerRef}
       className={clsx(
-        'w-full rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-colors',
-        config.height,
-        isDark
-          ? 'border-white/10 bg-white/[0.02]'
-          : 'border-black/10 bg-black/[0.02]',
+        'w-full flex items-center justify-center overflow-hidden',
+        slotConfig[slot].height,
         className
       )}
       role="complementary"
       aria-label="Advertisement"
-    >
-      {/* ---- Replace this block with your real AdSense code ---- */}
-      <div className="flex flex-col items-center gap-1 text-center px-4">
-        <span
-          className={clsx(
-            'text-[10px] font-semibold uppercase tracking-widest',
-            isDark ? 'text-white/20' : 'text-black/20'
-          )}
-        >
-          {config.label}
-        </span>
-        {slot === 'top' && (
-          <span
-            className={clsx(
-              'hidden sm:inline text-[11px]',
-              isDark ? 'text-white/15' : 'text-black/15'
-            )}
-          >
-            AdSense ID: ca-pub-XXXXXXXXXXXXXXXX
-          </span>
-        )}
-      </div>
-      {/* ---- End placeholder ---- */}
-    </div>
+    />
   );
 }
