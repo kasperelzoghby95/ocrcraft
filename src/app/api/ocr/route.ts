@@ -1,9 +1,23 @@
 import { NextResponse } from "next/server";
 
-const HF_ENDPOINTS = [
-  "https://router.huggingface.co/hf-inference/models/baidu/Unlimited-OCR",
-  "https://api-inference.huggingface.co/models/baidu/Unlimited-OCR",
-];
+const HF_API_URL = "https://api-inference.huggingface.co/models/baidu/Unlimited-OCR";
+
+async function callHF(
+  buffer: Buffer,
+  mimeType: string,
+  apiKey: string,
+  signal: AbortSignal
+): Promise<Response> {
+  return fetch(HF_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": mimeType,
+    },
+    body: buffer,
+    signal,
+  });
+}
 
 export async function POST(req: Request) {
   try {
@@ -16,75 +30,67 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.HUGGINGFACE_API_KEY;
     if (!apiKey) {
-      console.error("[OCR] HUGGINGFACE_API_KEY is not set in environment");
-      console.error("[OCR] Available env keys:", Object.keys(process.env).filter(k => !k.includes("SECRET") && !k.includes("KEY")).join(", "));
-      return NextResponse.json({ error: "API key not configured. Set HUGGINGFACE_API_KEY in .env" }, { status: 500 });
+      return NextResponse.json(
+        { error: "API key not configured. Set HUGGINGFACE_API_KEY." },
+        { status: 500 }
+      );
     }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    const mimeType = file.type || "application/octet-stream";
 
-    let lastError: unknown;
+    let response = await callHF(buffer, mimeType, apiKey, AbortSignal.timeout(30000));
 
-    for (const endpoint of HF_ENDPOINTS) {
-      try {
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": file.type || "application/octet-stream",
-          },
-          body: buffer,
-          signal: AbortSignal.timeout(30000),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`[OCR] Endpoint ${endpoint} returned ${response.status}:`, errorText);
-
-          if (response.status === 503) {
-            return NextResponse.json(
-              { error: "Model is loading. Please try again in a moment." },
-              { status: 503 }
-            );
-          }
-
-          lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
-          continue;
-        }
-
-        const result = await response.json();
-
-        let extractedText = "";
-
-        if (Array.isArray(result)) {
-          extractedText = result
-            .map((item: { generated_text?: string }) => item.generated_text || "")
-            .filter(Boolean)
-            .join("\n");
-        } else if (result.generated_text) {
-          extractedText = result.generated_text;
-        } else if (result.text) {
-          extractedText = result.text;
-        } else {
-          extractedText = JSON.stringify(result);
-        }
-
-        return NextResponse.json({ text: extractedText });
-      } catch (err) {
-        console.error(`[OCR] Endpoint ${endpoint} failed:`, err instanceof Error ? err.message : err);
-        lastError = err;
-      }
+    if (response.status === 503) {
+      const errorBody = await response.text();
+      console.warn(`[OCR] Model loading (503), retrying after 3s. Body: ${errorBody}`);
+      await new Promise((r) => setTimeout(r, 3000));
+      response = await callHF(buffer, mimeType, apiKey, AbortSignal.timeout(60000));
     }
 
-    const message = lastError instanceof Error ? lastError.message : "All endpoints failed";
-    if (message.includes("ENOTFOUND") || message.includes("getaddrinfo")) {
-      return NextResponse.json({ error: "Cannot reach Hugging Face API. Check your network or DNS settings." }, { status: 502 });
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`[OCR] HF returned ${response.status}:`, errorBody);
+      return NextResponse.json(
+        { error: `HF API error (${response.status}): ${errorBody || response.statusText}` },
+        { status: response.status }
+      );
     }
 
-    return NextResponse.json({ error: `OCR failed: ${message}` }, { status: 502 });
+    const result = await response.json();
+
+    let extractedText = "";
+
+    if (Array.isArray(result)) {
+      extractedText = result
+        .map((item: { generated_text?: string }) => item.generated_text || "")
+        .filter(Boolean)
+        .join("\n");
+    } else if (result.generated_text) {
+      extractedText = result.generated_text;
+    } else if (result.text) {
+      extractedText = result.text;
+    } else {
+      extractedText = JSON.stringify(result);
+    }
+
+    return NextResponse.json({ text: extractedText });
   } catch (error) {
-    console.error("[OCR] Unhandled error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[OCR] Unhandled error:", message);
+    if (message.includes("ENOTFOUND") || message.includes("getaddrinfo")) {
+      return NextResponse.json(
+        { error: "Cannot reach Hugging Face API. Check your network or DNS settings." },
+        { status: 502 }
+      );
+    }
+    if (message.includes("timed out") || message.includes("Timeout")) {
+      return NextResponse.json(
+        { error: "Request to Hugging Face API timed out." },
+        { status: 504 }
+      );
+    }
+    return NextResponse.json({ error: `OCR failed: ${message}` }, { status: 500 });
   }
 }
