@@ -14,7 +14,7 @@ async function callHF(
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": mimeType,
     },
-    body: buffer,
+    body: new Uint8Array(buffer),
     signal,
   });
 }
